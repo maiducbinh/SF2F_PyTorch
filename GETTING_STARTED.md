@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 The speech data need to be converted to mel-spectrograms via STFT with 30ms frame duration, please process the data using our script:
 ```
-python ./scripts/convert_wav_to_mel.py --n_jobs 5
+python ./scripts/convert_wav_to_mel.py --data_dir /path/to/input --output_dir /path/to/output --n_jobs 10
 ```
 `convert_wav_to_mel.py` used parallel processes to speed up the mel extraction. Feel free to adjust `n_jobs` to adapt to the configuration of your machine. 
 
