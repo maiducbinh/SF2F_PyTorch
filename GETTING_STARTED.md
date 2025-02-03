@@ -34,6 +34,7 @@ python ./scripts/create_split_json.py
 ```
 
 **Dataset Structure.** 
+```
 data
 ├── masked_faces
 │ ├── person_name_1
@@ -51,8 +52,8 @@ data
 │ ├── person_name_2
 │ │ ├── audio_pickle_file_1.pkl
 │ │ └── ...
-|── split.json
-
+└── split.json
+```
 
 ## Download VGGFace2 Resnet Checkpoint
 We developed VGGFace Score (VFS) with pretrained ResNet model on VGGFace2 Dataset (https://github.com/cydonia999/VGGFace2-pytorch).
