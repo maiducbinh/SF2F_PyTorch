@@ -4,6 +4,11 @@ import argparse
 from PIL import Image
 
 def convert_images_to_pickle(source_folder, destination_folder):
+    # Kiểm tra xem thư mục nguồn có tồn tại không
+    if not os.path.exists(source_folder):
+        print(f"Thư mục nguồn {source_folder} không tồn tại!")
+        return
+    
     # Tạo thư mục đích nếu chưa tồn tại
     os.makedirs(destination_folder, exist_ok=True)
     
@@ -19,17 +24,24 @@ def convert_images_to_pickle(source_folder, destination_folder):
                 img_path = os.path.join(person_folder, img_file)
                 
                 if img_file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    # Mở ảnh
-                    img = Image.open(img_path)
-                    img_data = img.convert("RGB")  # Đảm bảo ảnh ở định dạng RGB
-                    
-                    # Tạo tên file pickle theo định dạng người_tên_file_ảnh.pickle
-                    pickle_file_name = f"{person}_{os.path.splitext(img_file)[0]}.pickle"
-                    pickle_file_path = os.path.join(person_output_folder, pickle_file_name)
-                    
-                    # Lưu ảnh dưới dạng pickle
-                    with open(pickle_file_path, 'wb') as pickle_file:
-                        pickle.dump(img_data, pickle_file)
+                    try:
+                        # Mở ảnh
+                        img = Image.open(img_path)
+                        img_data = img.convert("RGB")  # Đảm bảo ảnh ở định dạng RGB
+                        
+                        # Tạo tên file pickle theo định dạng người_tên_file_ảnh.pickle
+                        pickle_file_name = f"{person}_{os.path.splitext(img_file)[0]}.pickle"
+                        pickle_file_path = os.path.join(person_output_folder, pickle_file_name)
+                        
+                        # Lưu ảnh dưới dạng pickle
+                        with open(pickle_file_path, 'wb') as pickle_file:
+                            pickle.dump(img_data, pickle_file)
+                        
+                        # Đảm bảo giải phóng tài nguyên
+                        img.close()
+
+                    except Exception as e:
+                        print(f"Lỗi khi xử lý ảnh {img_file}: {e}")
 
 def main():
     # Thiết lập argparse để xử lý đầu vào từ dòng lệnh

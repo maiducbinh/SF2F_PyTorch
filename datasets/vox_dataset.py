@@ -40,24 +40,7 @@ class VoxDataset(Dataset):
                  mel_seg_window_stride=(125, 125),
                  image_left_right_avg=False,
                  image_random_hflip=False):
-        '''
-        A PyTorch Dataset for loading VoxCeleb 1 & 2 human speech
-        (as mel spectrograms) and face (as image)
-
-        Inputs:
-        - data: Path to a directory where vox1 & vox2 data are held
-        - face_type: 'masked' or 'origin'
-        - image_size: Shape (h, w) to output the image
-        - image_normalize_method: Method to normalize the image, 'imagenet' or
-            'standard'
-        - return_mel_segments: Return several segments of mel spectrogram
-        - mel_seg_window_stride: Tuple (int, int), defines the window size and
-            stride size when segmenting the mel spectrogram with sliding window
-        - image_left_right_avg: flip the image, average the original and flipped
-            image
-        - image_random_hflip: Add random horizontal image flip to training set
-
-        '''
+        
         self.data_dir = data_dir
         self.image_size = image_size
         self.face_type = face_type
@@ -70,9 +53,6 @@ class VoxDataset(Dataset):
         self.return_mel_segments = return_mel_segments
         self.mel_seg_window_stride = mel_seg_window_stride
         self.shuffle_mel_segments = True
-        # This attribute is added to make the return segment mode to start from
-        # a random time
-        # Thus improve the randomness in fuser data
         self.mel_segments_rand_start = False
         self.image_left_right_avg = image_left_right_avg
         self.image_random_hflip = image_random_hflip
@@ -89,108 +69,78 @@ class VoxDataset(Dataset):
         self.available_names = self.available_names[0:length]
 
     def __getitem__(self, index):
-        '''
-        Given an index, randomly return a face and a mel_spectrogram of this guy
-        '''
-        sub_dataset, name = self.available_names[index]
+        name = self.available_names[index]
         # Face Image
-        image_dir = os.path.join(
-            self.data_dir, sub_dataset, self.face_dir, name)
+        image_dir = os.path.join(self.data_dir, self.face_dir, name)
         image_jpg = random.choice(os.listdir(image_dir))
         image_path = os.path.join(image_dir, image_jpg)
 
         with open(image_path, 'rb') as f:
             with PIL.Image.open(f) as image:
                 WW, HH = image.size
-                #print("PIL Image:", np.array(image))
                 image = image.convert('RGB')
                 if self.image_left_right_avg:
-                    arr = (np.array(image) / 2.0 + \
-                        np.array(T.functional.hflip(image)) / 2.0).astype(
-                            np.uint8)
+                    arr = (np.array(image)/2.0 + \
+                        np.array(T.functional.hflip(image))/2.0).astype(np.uint8)
                     image = PIL.Image.fromarray(arr, mode="RGB")
                 image = self.image_transform(image)
 
         # Mel Spectrogram
-        mel_gram_dir = os.path.join(
-            self.data_dir, sub_dataset, 'mel_spectrograms', name)
+        mel_gram_dir = os.path.join(self.data_dir, 'mel_spectrograms', name)
         mel_gram_pickle = random.choice(os.listdir(mel_gram_dir))
         mel_gram_path = os.path.join(mel_gram_dir, mel_gram_pickle)
+        
         if not self.return_mel_segments:
-            # Return single segment
             log_mel = self.load_mel_gram(mel_gram_path)
             log_mel = self.mel_transform(log_mel)
         else:
-            log_mel = self.get_all_mel_segments_of_id(
-                index, shuffle=self.shuffle_mel_segments)
+            log_mel = self.get_all_mel_segments_of_id(index, shuffle=self.shuffle_mel_segments)
 
         human_id = torch.tensor(index)
-
         return image, log_mel, human_id
 
     def get_all_faces_of_id(self, index):
-        '''
-        Given a id, return all the faces of him as a batch tensor, with shape
-        (N, C, H, W)
-        '''
-        sub_dataset, name = self.available_names[index]
+        name = self.available_names[index]
         faces = []
-        # Face Image
-        image_dir = os.path.join(
-            self.data_dir, sub_dataset, self.face_dir, name)
+        image_dir = os.path.join(self.data_dir, self.face_dir, name)
         for image_jpg in os.listdir(image_dir):
             image_path = os.path.join(image_dir, image_jpg)
             with open(image_path, 'rb') as f:
                 with PIL.Image.open(f) as image:
-                    WW, HH = image.size
-                    #print("PIL Image:", np.array(image))
                     image = self.image_transform(image.convert('RGB'))
                     faces.append(image)
-        faces = torch.stack(faces)
+        return torch.stack(faces)
 
-        return faces
-
-    def get_all_mel_segments_of_id(self,
-                                   index,
-                                   shuffle=False):
-        '''
-        Given a id, return all the speech segments of him as a batch tensor,
-        with shape (N, C, L)
-        '''
-        sub_dataset, name = self.available_names[index]
+    def get_all_mel_segments_of_id(self, index, shuffle=False):
+        name = self.available_names[index]
         window_length, stride_length = self.mel_seg_window_stride
         segments = []
-        # Mel Spectrogram
-        mel_gram_dir = os.path.join(
-            self.data_dir, sub_dataset, 'mel_spectrograms', name)
+        mel_gram_dir = os.path.join(self.data_dir, 'mel_spectrograms', name)
         mel_gram_list = os.listdir(mel_gram_dir)
+        
         if shuffle:
             random.shuffle(mel_gram_list)
         else:
             mel_gram_list.sort()
-        seg_count = 0
+            
         for mel_gram_pickle in mel_gram_list:
             mel_gram_path = os.path.join(mel_gram_dir, mel_gram_pickle)
             log_mel = self.load_mel_gram(mel_gram_path)
             log_mel = self.mel_transform(log_mel)
             mel_length = log_mel.shape[1]
+            
             if self.mel_segments_rand_start:
                 start = np.random.randint(mel_length - window_length)
                 log_mel = log_mel[:, start:]
                 mel_length = log_mel.shape[1]
-            # Calulate the number of windows that can be generated
+                
             num_window = 1 + (mel_length - window_length) // stride_length
-            # Sliding Window
-            for i in range(0, num_window):
+            for i in range(num_window):
                 start_time = i * stride_length
-                segment = log_mel[:, start_time:start_time + window_length]
-                segments.append(segment)
-                seg_count = seg_count + 1
-                if seg_count == 20: # 20
-                    segments = torch.stack(segments)
-                    return segments
-        segments = torch.stack(segments)
-        return segments
+                segments.append(log_mel[:, start_time:start_time+window_length])
+                if len(segments) >= 20:
+                    return torch.stack(segments[:20])
+        return torch.stack(segments)
 
     def set_image_transform(self):
         print('Dataloader: called set_image_size', self.image_size)
@@ -216,29 +166,21 @@ class VoxDataset(Dataset):
         self.mel_transform = T.Compose(mel_transform)
 
     def load_split_dict(self):
-        '''
-        Load the train, val, test set information from split.json
-        '''
-        with open(self.split_json) as json_file:
-            self.split_dict = json.load(json_file)
+        with open(self.split_json) as f:
+            self.split_dict = json.load(f)
 
     def list_available_names(self):
-        '''
-        Find the intersection of speech and face data
-        '''
         self.available_names = []
-        # List VoxCeleb1 data:
-        for sub_dataset in ('vox1', 'vox2'):
-            mel_gram_available = os.listdir(
-                os.path.join(self.data_dir, sub_dataset, 'mel_spectrograms'))
-            face_available = os.listdir(
-                os.path.join(self.data_dir, sub_dataset, self.face_dir))
-            available = \
-                set(mel_gram_available).intersection(face_available)
-            for name in available:
-                if name in self.split_dict[sub_dataset][self.split_set]:
-                    self.available_names.append((sub_dataset, name))
-
+        mel_dir = os.path.join(self.data_dir, 'mel_spectrograms')
+        face_dir = os.path.join(self.data_dir, self.face_dir)
+        
+        mel_names = set(os.listdir(mel_dir))
+        face_names = set(os.listdir(face_dir))
+        valid_names = mel_names & face_names
+        
+        for name in valid_names:
+            if name in self.split_dict[self.split_set]:
+                self.available_names.append(name)
         self.available_names.sort()
 
     def load_mel_gram(self, mel_pickle):

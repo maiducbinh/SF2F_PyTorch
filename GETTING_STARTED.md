@@ -33,8 +33,25 @@ python ./scripts/convert_wav_to_mel.py --data_dir /path/to/input --output_dir /p
 python ./scripts/create_split_json.py
 ```
 
-**Dataset Structure.** Refer to the following picture for ```data/``` folder structure.
-<img src="./images/data_VoxCeleb.png" align="center" width="60%">
+**Dataset Structure.** 
+data
+├── masked_faces
+│ ├── person_name_1
+│ │ ├── image_file_1.jpg
+│ │ ├── image_file_2.jpg
+│ │ └── ...
+│ ├── person_name_2
+│ │ ├── image_file_1.jpg
+│ │ ├── image_file_2.jpg
+│ │ └── ...
+├── mel_spectrograms
+│ ├── person_name_1
+│ │ ├── audio_pickle_file_1.pkl
+│ │ └── ...
+│ ├── person_name_2
+│ │ ├── audio_pickle_file_1.pkl
+│ │ └── ...
+|── split.json
 
 
 ## Download VGGFace2 Resnet Checkpoint

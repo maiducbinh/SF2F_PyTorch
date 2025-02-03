@@ -1,2 +1,5 @@
 vox_dataset/
 example_dataset/
+demo_dataset/
+output/
+weights/
