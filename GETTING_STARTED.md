@@ -108,8 +108,13 @@ Start the **tensorboard** server:
 tensorboard --logdir='./output' --port=8097
 ```
 (Optional) If working on a remote server, mapping the remote tensorboard server to local:
+From local terminal:
 ```
 ssh -N -L localhost:8000:localhost:8097 user@your_remote_server
+```
+From remote server:
+```
+tensorboard --logdir=/path/to/log/dir --port=8097
 ```
 Visualize the training process by opening `localhost:8097` (from local)  `localhost:8000` (from remote)
 
