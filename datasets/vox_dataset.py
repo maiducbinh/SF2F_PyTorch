@@ -130,7 +130,10 @@ class VoxDataset(Dataset):
             mel_length = log_mel.shape[1]
             
             if self.mel_segments_rand_start:
-                start = np.random.randint(mel_length - window_length)
+                if mel_length > window_length:
+                    start = np.random.randint(0, mel_length - window_length)
+                else:
+                    start = 0
                 log_mel = log_mel[:, start:]
                 mel_length = log_mel.shape[1]
                 
@@ -139,8 +142,21 @@ class VoxDataset(Dataset):
                 start_time = i * stride_length
                 segments.append(log_mel[:, start_time:start_time+window_length])
                 if len(segments) >= 20:
-                    return torch.stack(segments[:20])
-        return torch.stack(segments)
+                    break
+            if len(segments) >= 20:
+                break
+        
+        # If not enough segments, pad with zeros
+        num_segments = len(segments)
+        desired_segments = 20  # or whatever fixed number you want
+        if num_segments < desired_segments:
+            # Create a zero segment with the same shape as one segment
+            # (Assuming all segments have shape (freq, window_length))
+            zero_segment = torch.zeros_like(segments[0])
+            for _ in range(desired_segments - num_segments):
+                segments.append(zero_segment)
+        
+        return torch.stack(segments[:desired_segments])
 
     def set_image_transform(self):
         print('Dataloader: called set_image_size', self.image_size)
