@@ -4,3 +4,5 @@ demo_dataset/
 output/
 weights/
 cmd.txt
+__pycache__/
+.cache/
