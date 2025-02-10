@@ -62,7 +62,7 @@ def main():
     except:
         shutil.rmtree(result_dir)
         shutil.copytree(args.input_wav_dir, result_dir)
-    voice_path = os.path.join(result_dir, '*/*/*.wav')
+    voice_path = os.path.join(result_dir, '*.wav')
     voice_list = glob.glob(voice_path)
     for filename in voice_list:
         result_sub_dir = filename.replace('.wav', '')
